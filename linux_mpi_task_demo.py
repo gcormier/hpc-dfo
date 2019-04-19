@@ -163,7 +163,9 @@ if __name__ == '__main__':
     print('Elapsed time: {}'.format(end_time - start_time))
     print()
 
-    time.sleep(5)
+    # You have to give some time for the results to transfer before you kill things
+    time.sleep(15)
+    
 
     print('Deleting input container...')
     blob_client.delete_container(input_container_name)
@@ -174,12 +176,17 @@ if __name__ == '__main__':
 
     # Download the task output files from the output Storage container to a
     # local directory
-    #print('Downloading results...')
-    # common.helpers.download_blob_from_container(
-    # blob_client,
-    # output_container_name,
-    # _TASK_OUTPUT_BLOB_NAME,
-    # os.path.expanduser('~'))
+    if common.helpers.query_yes_no('Download results?') == 'yes':
+        downloadPath = os.path.expanduser('~') + "/" + output_container_name
+        print('Downloading results to ' + downloadPath)
+        print(output_container_name)
+        print(_TASK_OUTPUT_BLOB_NAME)
+        os.mkdir(os.path.expanduser('~') + "/" + output_container_name)
+        common.helpers.download_blob_from_container(
+            blob_client,
+            output_container_name,
+            _TASK_OUTPUT_BLOB_NAME,
+            downloadPath)
 
     print()
-    input('Press ENTER to exit...')
+    
