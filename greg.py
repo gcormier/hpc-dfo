@@ -1,2 +1,2 @@
 import os
-print(os.environ['BATCH_ACCOUNT_KEY'])
+print(os.environ['_BATCH_ACCOUNT_KEY'])

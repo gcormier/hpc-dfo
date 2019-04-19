@@ -431,7 +431,7 @@ def download_blob_from_container(
         container_name))
 
     destination_file_path = os.path.join(directory_path, blob_name)
-
+    
     block_blob_client.get_blob_to_path(
         container_name, blob_name, destination_file_path)
 
