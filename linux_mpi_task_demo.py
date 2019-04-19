@@ -2,6 +2,8 @@ from __future__ import print_function
 import datetime
 import os
 import sys
+import coloredlogs, logging
+
 
 try:
     input = raw_input
@@ -21,6 +23,15 @@ from azure.storage.common.retry import (
     no_retry,
 )
 
+logger = logging.getLogger(__name__)
+
+# Enable log output only for my logger
+coloredlogs.install(level='DEBUG', logger=logger)
+
+# Enable log output for ALL sources
+#coloredlogs.install(level='DEBUG')
+
+
 sys.path.append('.')
 import common.helpers  # noqa
 
@@ -34,6 +45,8 @@ _BATCH_ACCOUNT_URL = os.environ['_BATCH_ACCOUNT_URL']
 _STORAGE_ACCOUNT_NAME = os.environ['_STORAGE_ACCOUNT_NAME']
 _STORAGE_ACCOUNT_KEY = os.environ['_STORAGE_ACCOUNT_KEY']
 
+_POOL_INTERNODE = True
+
 # Maximum time to run in minutes
 MAX_RUNTIME = 30
 
@@ -44,6 +57,7 @@ _POOL_ID = common.helpers.generate_unique_resource_name(
     'pool_{}_{}'.format(_OS_NAME, _APP_NAME))
 _POOL_NODE_COUNT = 2
 _POOL_VM_SIZE = 'STANDARD_H16r'
+#_POOL_VM_SIZE = 'Standard_F4s_v2'
 _NODE_OS_PUBLISHER = 'OpenLogic'
 _NODE_OS_OFFER = 'CentOS-HPC'
 _NODE_OS_SKU = '7.4'
@@ -58,8 +72,7 @@ _NUM_INSTANCES = _POOL_NODE_COUNT
 if __name__ == '__main__':
 
     start_time = datetime.datetime.now().replace(microsecond=0)
-    print('Sample start: {}'.format(start_time))
-    print()
+    logger.info('Sample start: {}'.format(start_time))
 
     # Create the blob client, for use in obtaining references to
     # blob storage containers and uploading files to containers.
@@ -71,7 +84,8 @@ if __name__ == '__main__':
 
     # Use the blob client to create the containers in Azure Storage if they
     # don't yet exist.
-    input_container_name = 'input'
+    input_container_name = common.helpers.generate_unique_resource_name(
+        'input-{}-{}'.format(_OS_NAME, _APP_NAME))
     output_container_name = common.helpers.generate_unique_resource_name(
         'output-{}-{}'.format(_OS_NAME, _APP_NAME))
     blob_client.create_container(input_container_name, fail_on_exist=False)
@@ -133,7 +147,7 @@ if __name__ == '__main__':
     # is rebooted or re-imaged).
     multi_task_helpers.create_pool_and_wait_for_vms(
         batch_client, _POOL_ID, _NODE_OS_PUBLISHER, _NODE_OS_OFFER,
-        _NODE_OS_SKU, _POOL_VM_SIZE, _POOL_NODE_COUNT)
+        _NODE_OS_SKU, _POOL_VM_SIZE, _POOL_NODE_COUNT, enable_inter_node_communication=_POOL_INTERNODE)
 
     # Create the job that will run the tasks.
     common.helpers.create_job(batch_client, _JOB_ID, _POOL_ID)
@@ -158,19 +172,19 @@ if __name__ == '__main__':
 
     # Print out some timing info
     end_time = datetime.datetime.now().replace(microsecond=0)
-    print()
-    print('Sample end: {}'.format(end_time))
-    print('Elapsed time: {}'.format(end_time - start_time))
-    print()
-
+    
+    logger.info('Sample end: {}'.format(end_time))
+    logger.info('Elapsed time: {}'.format(end_time - start_time))
+    
     # You have to give some time for the results to transfer before you kill things
+    logger.info("Sleeping 15 seconds...")
     time.sleep(15)
     
 
-    print('Deleting input container...')
+    logger.info('Deleting input container...')
     blob_client.delete_container(input_container_name)
 
-    print('Deleting job and pool...')
+    logger.info('Deleting job and pool...')
     batch_client.job.delete(_JOB_ID)
     batch_client.pool.delete(_POOL_ID)
 
@@ -178,9 +192,7 @@ if __name__ == '__main__':
     # local directory
     if common.helpers.query_yes_no('Download results?') == 'yes':
         downloadPath = os.path.expanduser('~') + "/" + output_container_name
-        print('Downloading results to ' + downloadPath)
-        print(output_container_name)
-        print(_TASK_OUTPUT_BLOB_NAME)
+        logger.info('Downloading results to ' + downloadPath)
         os.mkdir(os.path.expanduser('~') + "/" + output_container_name)
         common.helpers.download_blob_from_container(
             blob_client,
@@ -188,5 +200,5 @@ if __name__ == '__main__':
             _TASK_OUTPUT_BLOB_NAME,
             downloadPath)
 
-    print()
+    logger.info("Done!")
     

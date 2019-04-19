@@ -1,30 +1,3 @@
-# multi_task_helpers.py - Helper functions for Batch Python SDK sample to
-# run multiinstance task
-#
-# Copyright (c) Microsoft Corporation
-#
-# All rights reserved.
-#
-# MIT License
-#
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-
 from __future__ import print_function
 import datetime
 import sys
@@ -47,7 +20,8 @@ def create_pool_and_wait_for_vms(
         publisher, offer, sku, vm_size,
         target_dedicated_nodes,
         command_line=None, resource_files=None,
-        elevation_level=batchmodels.ElevationLevel.admin):
+        elevation_level=batchmodels.ElevationLevel.admin,
+        enable_inter_node_communication=True):
     """
     Creates a pool of compute nodes with the specified OS settings.
 
@@ -67,7 +41,7 @@ def create_pool_and_wait_for_vms(
     :param str elevation_level: Elevation level the task will be run as;
         either 'admin' or 'nonadmin'.
     """
-    print('Creating pool [{}]...'.format(pool_id))
+    logger.info('Creating pool [{}]...'.format(pool_id))
 
     # Create a new pool of Linux compute nodes using an Azure Virtual Machines
     # Marketplace image. For more information about creating pools of Linux
@@ -91,7 +65,7 @@ def create_pool_and_wait_for_vms(
         vm_size=vm_size,
         target_dedicated_nodes=target_dedicated_nodes,
         resize_timeout=datetime.timedelta(minutes=15),
-        enable_inter_node_communication=True,
+        enable_inter_node_communication=enable_inter_node_communication,
         max_tasks_per_node=1,
         start_task=batch.models.StartTask(
             command_line=command_line,
@@ -140,7 +114,7 @@ def add_task(
     :param list common_files: A collection of common input files.
     """
 
-    print('Adding {} task to job [{}]...'.format(task_id, job_id))
+    logger.info('Adding {} task to job [{}]...'.format(task_id, job_id))
 
     multi_instance_settings = None
     if coordination_cmdline or (num_instances and num_instances > 1):
@@ -184,11 +158,11 @@ def wait_for_subtasks_to_complete(
     """
     timeout_expiration = datetime.datetime.now() + timeout
 
-    print("Monitoring all tasks for 'Completed' state, timeout in {}..."
+    logger.info("Monitoring all tasks for 'Completed' state, timeout in {}..."
           .format(timeout), end='')
 
     while datetime.datetime.now() < timeout_expiration:
-        print('.', end='')
+        logger.info('.', end='')
         sys.stdout.flush()
 
         subtasks = batch_service_client.task.list_subtasks(job_id, task_id)
@@ -197,12 +171,12 @@ def wait_for_subtasks_to_complete(
                                batchmodels.TaskState.completed]
 
         if not incomplete_subtasks:
-            print()
+            logger.info()
             return True
         else:
             time.sleep(10)
 
-    print()
+    logger.info()
     raise RuntimeError(
         "ERROR: Subtasks did not reach 'Completed' state within "
         "timeout period of " + str(timeout))
@@ -221,11 +195,11 @@ def wait_for_tasks_to_complete(batch_service_client, job_id, timeout):
     """
     timeout_expiration = datetime.datetime.now() + timeout
 
-    print("Monitoring all tasks for 'Completed' state, timeout in {}..."
+    logger.info("Monitoring all tasks for 'Completed' state, timeout in {}..."
           .format(timeout), end='')
 
     while datetime.datetime.now() < timeout_expiration:
-        print('.', end='')
+        logger.info('.', end='')
         sys.stdout.flush()
         tasks = batch_service_client.task.list(job_id)
 
@@ -239,11 +213,11 @@ def wait_for_tasks_to_complete(batch_service_client, job_id, timeout):
         incomplete_tasks = [task for task in tasks if
                             task.state != batchmodels.TaskState.completed]
         if not incomplete_tasks:
-            print()
+            logger.info()
             return True
         else:
             time.sleep(10)
 
-    print()
+    logger.info()
     raise RuntimeError("ERROR: Tasks did not reach 'Completed' state within "
                        "timeout period of " + str(timeout))

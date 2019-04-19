@@ -4,10 +4,13 @@ import datetime
 import datetime
 import os
 import sys
+import logging
 
-print(os.environ['_BATCH_ACCOUNT_KEY'])
+logging.basicConfig(
+        format='%(asctime)s %(levelname)-8s %(message)s',
+        level=logging.INFO,
+        datefmt='%Y-%m-%d %H:%M:%S')
 
-
-
-os.mkdir(os.path.expanduser('~') + "/test")
-print(os.path.expanduser('~') + "/test")
+logging.info("Test")
+logging.debug("moretest")
+logging.error("uhoh")
