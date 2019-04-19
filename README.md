@@ -1,6 +1,6 @@
-## Azure Batch Python Article Samples
+## dfo-hpc sample code
 
-### Configuring the samples
+### Structure Overview
 In order to run the Python samples, they must be updated with Azure Batch
 and Azure Storage credentials. 
 
@@ -12,22 +12,17 @@ with version 2.7 or 3.3+. You will also need to install the
 Installation can be performed using the [requirements.txt](./requirements.txt)
 file via the command `pip install -r requirements.txt`
 
-### MPI sample
-The MPI sample is an introduction to running an MPI command in Azure Batch in a
-Linux environment. It creates a pool with RDMA enabled virtual machines (You can
-use STANDARD_A8 to replace the virtual machine size if you don't have enough
-core quota). It submits a job to the pool, and then submits a task which 
-performs a simple MPI pingpong command. The files required by the task are
-automatically uploaded to Azure Storage and then downloaded onto the nodes via
-Batch resource files. When the task is done, the console output of the MPI
-pingpong command is uploaded back to Azure Storage.
+### MPI on Azure
+Using infiniband is limited to certain instance types, and there is also the issue of having
+the proper drivers and support for infiniband. CentOS is best, although Ubuntu 16 might be supported.
 
 For more details on MPI/RDMA, visit [here](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/classic/rdma-cluster).
 
 
-### Copyright
-linux_mpi_task_demo.py - Batch Python tutorial sample for multi-instance
+### Notice
+Based on linux_mpi_task_demo.py - Batch Python tutorial sample for multi-instance
 tasks in linux (OpenFoam application)
+```
 Copyright (c) Microsoft Corporation
 All rights reserved.
 MIT License
@@ -46,3 +41,4 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
+```
