@@ -30,6 +30,10 @@ export I_MPI_FABRICS=shm:dapl
 export I_MPI_DAPL_PROVIDER=ofa-v2-ib0
 export I_MPI_DYNAMIC_CONNECTION=0
 
+# Do we have to wait 30 seconds for RDMA/IB to be available on eth1?
+sleep 30
+
+
 mpirun IMB-MPI1 pingpong > pong1.log
 echo "----"
 mpirun -n 2 ./pingpong > pong2.log

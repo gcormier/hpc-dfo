@@ -46,8 +46,8 @@ _BATCH_ACCOUNT_URL = os.environ['_BATCH_ACCOUNT_URL']
 
 _STORAGE_ACCOUNT_NAME = os.environ['_STORAGE_ACCOUNT_NAME']
 _STORAGE_ACCOUNT_KEY = os.environ['_STORAGE_ACCOUNT_KEY']
-
-
+PERSISTENT_INPUT_STORAGE = os.environ['PERSISTENT_INPUT_STORAGE']
+#PERSISTENT_INPUT_STORAGE = config['job']['PERSISTENT_INPUT_STORAGE']
 
 # Path to the jobs directory
 JOB_PATH = './jobs/benchmark'
@@ -70,6 +70,8 @@ _NODE_OS_OFFER = config['node']['CFG_OS_OFFER']
 _NODE_OS_SKU = config['node']['CFG_OS_SKU']
 
 _POOL_INTERNODE = config['node']['CFG_INTERNODE']
+
+
 
 
 _JOB_ID = 'job-{}'.format(_POOL_ID)
@@ -158,7 +160,8 @@ if __name__ == '__main__':
     # is rebooted or re-imaged).
     multi_task_helpers.create_pool_and_wait_for_vms(
         batch_client, _POOL_ID, _NODE_OS_PUBLISHER, _NODE_OS_OFFER,
-        _NODE_OS_SKU, _POOL_VM_SIZE, _POOL_NODE_COUNT, enable_inter_node_communication=_POOL_INTERNODE)
+        _NODE_OS_SKU, _POOL_VM_SIZE, _POOL_NODE_COUNT, enable_inter_node_communication=_POOL_INTERNODE,
+        resource_files=[batch.models.ResourceFile(storage_container_url=PERSISTENT_INPUT_STORAGE)]
 
     # Create the job that will run the tasks.
     common.helpers.create_job(batch_client, _JOB_ID, _POOL_ID)
