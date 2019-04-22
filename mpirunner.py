@@ -47,7 +47,7 @@ _BATCH_ACCOUNT_URL = os.environ['_BATCH_ACCOUNT_URL']
 _STORAGE_ACCOUNT_NAME = os.environ['_STORAGE_ACCOUNT_NAME']
 _STORAGE_ACCOUNT_KEY = os.environ['_STORAGE_ACCOUNT_KEY']
 
-_POOL_INTERNODE = True
+
 
 # Path to the jobs directory
 JOB_PATH = './jobs/benchmark'
@@ -59,21 +59,18 @@ config.read(JOB_PATH + '/config.ini')
 
 # Maximum time to run in minutes
 MAX_RUNTIME = 30
-_OS_NAME = 'linux'
 _APP_NAME = 'pingpong'
+_OS_NAME = config['node']['CFG_OS_NAME']
 _POOL_ID = common.helpers.generate_unique_resource_name(
     'pool_{}_{}'.format(_OS_NAME, _APP_NAME))
-_POOL_NODE_COUNT = 2
-#_POOL_VM_SIZE = 'STANDARD_H16r'
-_POOL_VM_SIZE = 'Standard_F2s_v2'
-_NODE_OS_PUBLISHER = 'OpenLogic'
+_POOL_NODE_COUNT = config['node']['CFG_NODE_COUNT']
+_POOL_VM_SIZE = config['node']['CFG_VM_SIZE']
+_NODE_OS_PUBLISHER = config['node']['CFG_OS_PUBLISHER']
+_NODE_OS_OFFER = config['node']['CFG_OS_OFFER']
+_NODE_OS_SKU = config['node']['CFG_OS_SKU']
 
-# CentOS-HPC Should only be used on RDMA capable instance types (Hc or Hb)
-#_NODE_OS_OFFER = 'CentOS-HPC'
-#_NODE_OS_SKU = '7.4'
+_POOL_INTERNODE = config['node']['CFG_INTERNODE']
 
-_NODE_OS_OFFER = 'CentOS'
-_NODE_OS_SKU = '7.6'
 
 _JOB_ID = 'job-{}'.format(_POOL_ID)
 _TASK_ID = common.helpers.generate_unique_resource_name(
