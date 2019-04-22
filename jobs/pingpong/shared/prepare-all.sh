@@ -23,7 +23,8 @@ export PATH=$PATH:/usr/lib64/mpich/bin/
 mpicc pingpong.c -o pingpong
 
 source /opt/intel/impi/5.1.3.223/bin64/mpivars.sh
-chmod 777 /mnt
+
+chmod -R 777 /mnt
 
 export I_MPI_FABRICS=shm:dapl
 export I_MPI_DAPL_PROVIDER=ofa-v2-ib0
@@ -31,7 +32,7 @@ export I_MPI_DYNAMIC_CONNECTION=0
 
 mpirun IMB-MPI1 pingpong > pong1.log
 echo "----"
-mpirun ./pingpong > pong2.log
+mpirun -n 2 ./pingpong > pong2.log
 
 echo All done!
 exit 0
