@@ -349,7 +349,7 @@ def create_sas_token(
 
 def upload_blob_and_create_sas(
         block_blob_client, container_name, blob_name, file_name, expiry,
-        timeout=None):
+        timeout=None, path_prefix='/'):
     """Uploads a file from local disk to Azure Storage and creates
     a SAS for it.
 
@@ -365,33 +365,34 @@ def upload_blob_and_create_sas(
     :return: A SAS URL to the blob with the specified expiry time.
     :rtype: str
     """
+    
+    
     block_blob_client.create_container(
         container_name,
         fail_on_exist=False)
 
     block_blob_client.create_blob_from_path(
         container_name,
-        blob_name,
+        path_prefix + blob_name,
         file_name)
 
     sas_token = create_sas_token(
         block_blob_client,
         container_name,
-        blob_name,
+        path_prefix + blob_name,
         permission=azureblob.BlobPermissions.READ,
         expiry=expiry,
         timeout=timeout)
 
     sas_url = block_blob_client.make_blob_url(
         container_name,
-        blob_name,
+        path_prefix + blob_name,
         sas_token=sas_token)
 
     return sas_url
 
 
-def upload_file_to_container(
-        block_blob_client, container_name, file_path, timeout):
+def upload_file_to_container(block_blob_client, container_name, file_path, timeout, path_prefix=''):
     """
     Uploads a local file to an Azure Blob storage container.
 
@@ -406,11 +407,10 @@ def upload_file_to_container(
     tasks.
     """
     blob_name = os.path.basename(file_path)
-    print('Uploading file {} to container [{}]...'.format(
-        file_path, container_name))
+    print('Uploading {} to [{}]{}...'.format(file_path, container_name, path_prefix + os.path.basename(file_path)))
     sas_url = upload_blob_and_create_sas(
         block_blob_client, container_name, blob_name, file_path, expiry=None,
-        timeout=timeout)
+        timeout=timeout, path_prefix=path_prefix)
     return batchmodels.ResourceFile(
         file_path=blob_name, http_url=sas_url)
 

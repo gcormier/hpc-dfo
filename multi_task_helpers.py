@@ -2,14 +2,9 @@ from __future__ import print_function
 import datetime
 import sys
 import time
-
-try:
-    input = raw_input
-except NameError:
-    pass
-
 import azure.batch.batch_service_client as batch
 import azure.batch.models as batchmodels
+import os
 
 sys.path.append('.')
 import common.helpers  # noqa

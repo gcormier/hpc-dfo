@@ -3,12 +3,6 @@ import datetime
 import os
 import sys
 import coloredlogs, logging
-
-try:
-    input = raw_input
-except NameError:
-    pass
-
 import azure.storage.blob as azureblob
 import azure.batch.batch_service_client as batch
 import azure.batch.batch_auth as batchauth
@@ -16,13 +10,18 @@ import azure.batch.models as batchmodels
 import multi_task_helpers
 import time
 import configparser
-
-
+from azure.storage.blob import BlockBlobService, BlobPermissions, ContainerPermissions
 from azure.storage.common.retry import (
     ExponentialRetry,
     LinearRetry,
     no_retry,
 )
+
+def absoluteFilePaths(directory):
+   for dirpath,_,filenames in os.walk(directory):
+       for f in filenames:
+           yield os.path.abspath(os.path.join(dirpath, f))
+
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +45,9 @@ _BATCH_ACCOUNT_URL = os.environ['_BATCH_ACCOUNT_URL']
 
 _STORAGE_ACCOUNT_NAME = os.environ['_STORAGE_ACCOUNT_NAME']
 _STORAGE_ACCOUNT_KEY = os.environ['_STORAGE_ACCOUNT_KEY']
-PERSISTENT_INPUT_STORAGE = os.environ['PERSISTENT_INPUT_STORAGE']
-#PERSISTENT_INPUT_STORAGE = config['job']['PERSISTENT_INPUT_STORAGE']
 
 # Path to the jobs directory
-JOB_PATH = './jobs/benchmark'
+JOB_PATH = './jobs/pingpong'
 
 config = configparser.ConfigParser()
 config.read(JOB_PATH + '/config.ini')
@@ -69,9 +66,9 @@ _NODE_OS_PUBLISHER = config['node']['CFG_OS_PUBLISHER']
 _NODE_OS_OFFER = config['node']['CFG_OS_OFFER']
 _NODE_OS_SKU = config['node']['CFG_OS_SKU']
 
-_POOL_INTERNODE = config['node']['CFG_INTERNODE']
+_POOL_INTERNODE = config['pool']['CFG_INTERNODE']
 
-
+JOB_NAME = config['job']['JOB_NAME']
 
 
 _JOB_ID = 'job-{}'.format(_POOL_ID)
@@ -100,54 +97,65 @@ if __name__ == '__main__':
     # Use the blob client to create the containers in Azure Storage if they
     # don't yet exist.
     input_container_name = common.helpers.generate_unique_resource_name(
-        'input-{}-{}'.format(_OS_NAME, _APP_NAME))
+        'input-{}'.format(_APP_NAME))
     output_container_name = common.helpers.generate_unique_resource_name(
-        'output-{}-{}'.format(_OS_NAME, _APP_NAME))
+        'output-{}'.format(_APP_NAME))
     blob_client.create_container(input_container_name, fail_on_exist=False)
     blob_client.create_container(output_container_name, fail_on_exist=False)
+
+    persistent_input_storage_sas = blob_client.generate_container_shared_access_signature(
+        container_name="job-" + JOB_NAME, 
+        permission=ContainerPermissions.READ + ContainerPermissions.LIST,
+        expiry=datetime.datetime.utcnow() + datetime.timedelta(minutes=120)
+        )
+    persistent_input_storage_sas = 'https://{}.blob.core.windows.net/job-{}?{}'.format(
+        _STORAGE_ACCOUNT_NAME, JOB_NAME, persistent_input_storage_sas)
 
     # Obtain a shared access signature that provides write access to the output
     # container to which the tasks will upload their output.
     output_container_sas = common.helpers.create_container_and_create_sas(
         blob_client,
         output_container_name,
-        azureblob.BlobPermissions.WRITE,
+        BlobPermissions.WRITE,
         expiry=None,
         timeout=120)
 
     output_container_sas = 'https://{}.blob.core.windows.net/{}?{}'.format(
         _STORAGE_ACCOUNT_NAME, output_container_name, output_container_sas)
 
-    # The collection of common scripts/data files that are to be
-    # used/processed by all subtasks (including primary) in a
-    # multi-instance task.
-    common_file_paths = os.listdir(JOB_PATH + '/shared')
 
-    # Upload the common script/data files to Azure Storage
+    # Get all files in the shared subdirectory
+    common_file_paths = absoluteFilePaths(JOB_PATH + '/shared')
+
     common_files = [
         common.helpers.upload_file_to_container(
-            blob_client, input_container_name, file_path, timeout=120)
+            blob_client, input_container_name, os.path.realpath(file_path), timeout=120, path_prefix='shared/')
         for file_path in common_file_paths]
 
     # Command to run on all subtasks including primary before starting
     # application command on primary.
-    coordination_cmdline = ['$AZ_BATCH_TASK_SHARED_DIR/prepare-all.sh']
+    coordination_cmdline = ['$AZ_BATCH_TASK_SHARED_DIR/shared/prepare-all.sh']
 
     # The collection of scripts/data files that are to be used/processed by
     # the task (used/processed by primary in a multiinstance task).
-    input_file_paths = os.listdir(JOB_PATH)
+    input_file_paths = absoluteFilePaths(JOB_PATH + '/master')
 
     # Upload the script/data files to Azure Storage
     input_files = [
         common.helpers.upload_file_to_container(
-            blob_client, input_container_name, file_path, timeout=120)
+            blob_client, input_container_name, file_path, timeout=120, path_prefix='master/')
         for file_path in input_file_paths]
     print ("input files debug is\n")
     print(input_files)
 
     # Main application command to execute multiinstance task on a group of
     # nodes, eg. MPI.
-    application_cmdline = ['$AZ_BATCH_TASK_WORKING_DIR/execute-master.sh {}'.format(_NUM_INSTANCES)]
+    application_cmdline = ['$AZ_BATCH_TASK_WORKING_DIR/master/execute-master.sh {}'.format(_NUM_INSTANCES)]
+
+    if common.helpers.query_yes_no('Proceed with batch pool creation?') == 'no':
+        raise SystemExit
+
+
 
     # Create a Batch service client.  We'll now be interacting with the Batch
     # service in addition to Storage
@@ -161,7 +169,7 @@ if __name__ == '__main__':
     multi_task_helpers.create_pool_and_wait_for_vms(
         batch_client, _POOL_ID, _NODE_OS_PUBLISHER, _NODE_OS_OFFER,
         _NODE_OS_SKU, _POOL_VM_SIZE, _POOL_NODE_COUNT, enable_inter_node_communication=_POOL_INTERNODE,
-        resource_files=[batch.models.ResourceFile(storage_container_url=PERSISTENT_INPUT_STORAGE)]
+        resource_files=[batch.models.ResourceFile(storage_container_url=persistent_input_storage_sas)])
 
     # Create the job that will run the tasks.
     common.helpers.create_job(batch_client, _JOB_ID, _POOL_ID)
