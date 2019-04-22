@@ -36,19 +36,17 @@ def create_pool_and_wait_for_vms(
     :param str elevation_level: Elevation level the task will be run as;
         either 'admin' or 'nonadmin'.
     """
-    print('Creating pool [{}]...'.format(pool_id))
 
-    # Create a new pool of Linux compute nodes using an Azure Virtual Machines
-    # Marketplace image. For more information about creating pools of Linux
-    # nodes, see:
-    # https://azure.microsoft.com/documentation/articles/batch-linux-nodes/
+    print('Creating pool [{}]...'.format(pool_id))
 
     sku_to_use, image_ref_to_use = \
         common.helpers.select_latest_verified_vm_image_with_node_agent_sku(
             batch_service_client, publisher, offer, sku)
+    
     user = batchmodels.AutoUserSpecification(
         scope=batchmodels.AutoUserScope.pool,
         elevation_level=elevation_level)
+
     new_pool = batch.models.PoolAddParameter(
         id=pool_id,
         virtual_machine_configuration=batchmodels.VirtualMachineConfiguration(
@@ -62,7 +60,7 @@ def create_pool_and_wait_for_vms(
         start_task=batch.models.StartTask(
             command_line=command_line,
             user_identity=batchmodels.UserIdentity(auto_user=user),
-            wait_for_success=True,
+            wait_for_success=False,
             resource_files=resource_files) if command_line else None,
     )
 

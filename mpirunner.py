@@ -111,6 +111,16 @@ if __name__ == '__main__':
     persistent_input_storage_sas = 'https://{}.blob.core.windows.net/job-{}?{}'.format(
         _STORAGE_ACCOUNT_NAME, JOB_NAME, persistent_input_storage_sas)
 
+    input_storage_sas = blob_client.generate_container_shared_access_signature(
+        container_name=input_container_name, 
+        permission=ContainerPermissions.READ + ContainerPermissions.LIST,
+        expiry=datetime.datetime.utcnow() + datetime.timedelta(minutes=120)
+        )
+    input_storage_sas = 'https://{}.blob.core.windows.net/{}?{}'.format(
+        _STORAGE_ACCOUNT_NAME, input_container_name, input_storage_sas)
+
+
+
     # Obtain a shared access signature that provides write access to the output
     # container to which the tasks will upload their output.
     output_container_sas = common.helpers.create_container_and_create_sas(
@@ -134,7 +144,7 @@ if __name__ == '__main__':
 
     # Command to run on all subtasks including primary before starting
     # application command on primary.
-    coordination_cmdline = ['$AZ_BATCH_TASK_SHARED_DIR/shared/prepare-all.sh']
+    coordination_cmdline = ['bash -c "./shared/prepare-all.sh"']
 
     # The collection of scripts/data files that are to be used/processed by
     # the task (used/processed by primary in a multiinstance task).
@@ -150,7 +160,7 @@ if __name__ == '__main__':
 
     # Main application command to execute multiinstance task on a group of
     # nodes, eg. MPI.
-    application_cmdline = ['$AZ_BATCH_TASK_WORKING_DIR/master/execute-master.sh {}'.format(_NUM_INSTANCES)]
+    application_cmdline = ['bash -c "./master/execute-master.sh {}"'.format(_NUM_INSTANCES)]
 
     if common.helpers.query_yes_no('Proceed with batch pool creation?') == 'no':
         raise SystemExit
@@ -169,7 +179,10 @@ if __name__ == '__main__':
     multi_task_helpers.create_pool_and_wait_for_vms(
         batch_client, _POOL_ID, _NODE_OS_PUBLISHER, _NODE_OS_OFFER,
         _NODE_OS_SKU, _POOL_VM_SIZE, _POOL_NODE_COUNT, enable_inter_node_communication=_POOL_INTERNODE,
-        resource_files=[batch.models.ResourceFile(storage_container_url=persistent_input_storage_sas)])
+        command_line=coordination_cmdline,
+        resource_files=[batch.models.ResourceFile(storage_container_url=persistent_input_storage_sas),
+            batch.models.ResourceFile(storage_container_url=input_storage_sas)],
+        elevation_level=batchmodels.ElevationLevel.admin)
 
     # Create the job that will run the tasks.
     common.helpers.create_job(batch_client, _JOB_ID, _POOL_ID)
