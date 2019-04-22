@@ -15,6 +15,6 @@ echo AZ_BATCH_TASK_WORKING_DIR=$AZ_BATCH_TASK_WORKING_DIR
 pwd
 
 # Requirements
-sudo yum -y install epel-release
-sudo yum -y install gfortran cmake git makedepf90 gcc netcdf netcdf-devel netcdf-fortran-devel netcdf-fortran netcdf-static mpich-3.0 mpich-3.0-devel netcdf-fortran-mpich netcdf-fortran-mpich-devel hdf5-mpich hdf5-mpich-devel
+yum -y install epel-release
+yum -y install gfortran cmake git makedepf90 gcc netcdf netcdf-devel netcdf-fortran-devel netcdf-fortran netcdf-static mpich-3.0 mpich-3.0-devel netcdf-fortran-mpich netcdf-fortran-mpich-devel hdf5-mpich hdf5-mpich-devel
 export PATH=$PATH:/usr/lib64/mpich/bin/

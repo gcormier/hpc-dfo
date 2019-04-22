@@ -4,7 +4,6 @@ import os
 import sys
 import coloredlogs, logging
 
-
 try:
     input = raw_input
 except NameError:
@@ -16,6 +15,8 @@ import azure.batch.batch_auth as batchauth
 import azure.batch.models as batchmodels
 import multi_task_helpers
 import time
+import configparser
+
 
 from azure.storage.common.retry import (
     ExponentialRetry,
@@ -35,6 +36,7 @@ coloredlogs.install(level='DEBUG', logger=logger)
 sys.path.append('.')
 import common.helpers  # noqa
 
+
 # Set these environment variables
 # export _BATCH_ACCOUNT_KEY=abd123==
 # etc
@@ -47,10 +49,16 @@ _STORAGE_ACCOUNT_KEY = os.environ['_STORAGE_ACCOUNT_KEY']
 
 _POOL_INTERNODE = True
 
+# Path to the jobs directory
+JOB_PATH = './jobs/benchmark'
+
+config = configparser.ConfigParser()
+config.read(JOB_PATH + '/config.ini')
+
+
+
 # Maximum time to run in minutes
 MAX_RUNTIME = 30
-
-
 _OS_NAME = 'linux'
 _APP_NAME = 'pingpong'
 _POOL_ID = common.helpers.generate_unique_resource_name(
@@ -114,8 +122,7 @@ if __name__ == '__main__':
     # The collection of common scripts/data files that are to be
     # used/processed by all subtasks (including primary) in a
     # multi-instance task.
-    common_file_paths = [
-        os.path.realpath('./data/tcp-pingpong-prep.sh')]
+    common_file_paths = os.listdir(JOB_PATH + '/shared')
 
     # Upload the common script/data files to Azure Storage
     common_files = [
@@ -125,15 +132,11 @@ if __name__ == '__main__':
 
     # Command to run on all subtasks including primary before starting
     # application command on primary.
-    coordination_cmdline = ['$AZ_BATCH_TASK_SHARED_DIR/tcp-pingpong-prep.sh']
+    coordination_cmdline = ['$AZ_BATCH_TASK_SHARED_DIR/prepare-all.sh']
 
     # The collection of scripts/data files that are to be used/processed by
     # the task (used/processed by primary in a multiinstance task).
-    input_file_paths = [
-        os.path.realpath('./data/tcp-pingpong-job.sh'),
-        os.path.realpath('./data/tcp-prep.sh'),
-        os.path.realpath('./data/pingpong.c'),
-        ]
+    input_file_paths = os.listdir(JOB_PATH)
 
     # Upload the script/data files to Azure Storage
     input_files = [
@@ -143,13 +146,11 @@ if __name__ == '__main__':
 
     # Main application command to execute multiinstance task on a group of
     # nodes, eg. MPI.
-    application_cmdline = [
-        '$AZ_BATCH_TASK_WORKING_DIR/tcp-pingpong-job.sh {}'.format(_NUM_INSTANCES)]
+    application_cmdline = ['$AZ_BATCH_TASK_WORKING_DIR/execute-master.sh {}'.format(_NUM_INSTANCES)]
 
     # Create a Batch service client.  We'll now be interacting with the Batch
     # service in addition to Storage
-    credentials = batchauth.SharedKeyCredentials(
-        _BATCH_ACCOUNT_NAME, _BATCH_ACCOUNT_KEY)
+    credentials = batchauth.SharedKeyCredentials(_BATCH_ACCOUNT_NAME, _BATCH_ACCOUNT_KEY)
     batch_client = batch.BatchServiceClient(credentials, _BATCH_ACCOUNT_URL)
 
     # Create the pool that will contain the compute nodes that will execute the
@@ -213,4 +214,3 @@ if __name__ == '__main__':
             downloadPath)
 
     logger.info("Done!")
-    
