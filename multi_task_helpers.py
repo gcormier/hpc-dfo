@@ -41,16 +41,13 @@ def create_pool_and_wait_for_vms(
     :param str elevation_level: Elevation level the task will be run as;
         either 'admin' or 'nonadmin'.
     """
-    logger.info('Creating pool [{}]...'.format(pool_id))
+    print('Creating pool [{}]...'.format(pool_id))
 
     # Create a new pool of Linux compute nodes using an Azure Virtual Machines
     # Marketplace image. For more information about creating pools of Linux
     # nodes, see:
     # https://azure.microsoft.com/documentation/articles/batch-linux-nodes/
 
-    # Get the virtual machine configuration for the desired distro and version.
-    # For more information about the virtual machine configuration, see:
-    # https://azure.microsoft.com/documentation/articles/batch-linux-nodes/
     sku_to_use, image_ref_to_use = \
         common.helpers.select_latest_verified_vm_image_with_node_agent_sku(
             batch_service_client, publisher, offer, sku)
@@ -114,7 +111,7 @@ def add_task(
     :param list common_files: A collection of common input files.
     """
 
-    logger.info('Adding {} task to job [{}]...'.format(task_id, job_id))
+    print('Adding {} task to job [{}]...'.format(task_id, job_id))
 
     multi_instance_settings = None
     if coordination_cmdline or (num_instances and num_instances > 1):
@@ -158,11 +155,11 @@ def wait_for_subtasks_to_complete(
     """
     timeout_expiration = datetime.datetime.now() + timeout
 
-    logger.info("Monitoring all tasks for 'Completed' state, timeout in {}..."
+    print("Monitoring all tasks for 'Completed' state, timeout in {}..."
           .format(timeout), end='')
 
     while datetime.datetime.now() < timeout_expiration:
-        logger.info('.', end='')
+        print('.', end='')
         sys.stdout.flush()
 
         subtasks = batch_service_client.task.list_subtasks(job_id, task_id)
@@ -171,12 +168,12 @@ def wait_for_subtasks_to_complete(
                                batchmodels.TaskState.completed]
 
         if not incomplete_subtasks:
-            logger.info()
+            print("Subtask complete!")
             return True
         else:
             time.sleep(10)
 
-    logger.info()
+    print("Subtasks did not reach completed state within timeout period!")
     raise RuntimeError(
         "ERROR: Subtasks did not reach 'Completed' state within "
         "timeout period of " + str(timeout))
@@ -195,11 +192,11 @@ def wait_for_tasks_to_complete(batch_service_client, job_id, timeout):
     """
     timeout_expiration = datetime.datetime.now() + timeout
 
-    logger.info("Monitoring all tasks for 'Completed' state, timeout in {}..."
+    print("Monitoring all tasks for 'Completed' state, timeout in {}..."
           .format(timeout), end='')
 
     while datetime.datetime.now() < timeout_expiration:
-        logger.info('.', end='')
+        print('.', end='')
         sys.stdout.flush()
         tasks = batch_service_client.task.list(job_id)
 
@@ -213,11 +210,11 @@ def wait_for_tasks_to_complete(batch_service_client, job_id, timeout):
         incomplete_tasks = [task for task in tasks if
                             task.state != batchmodels.TaskState.completed]
         if not incomplete_tasks:
-            logger.info()
+            print("Taskss complete!")
             return True
         else:
             time.sleep(10)
 
-    logger.info()
+        print("Tasks did not reach completed state within timeout period!")
     raise RuntimeError("ERROR: Tasks did not reach 'Completed' state within "
                        "timeout period of " + str(timeout))

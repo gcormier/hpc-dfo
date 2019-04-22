@@ -56,11 +56,17 @@ _APP_NAME = 'pingpong'
 _POOL_ID = common.helpers.generate_unique_resource_name(
     'pool_{}_{}'.format(_OS_NAME, _APP_NAME))
 _POOL_NODE_COUNT = 2
-_POOL_VM_SIZE = 'STANDARD_H16r'
-#_POOL_VM_SIZE = 'Standard_F4s_v2'
+#_POOL_VM_SIZE = 'STANDARD_H16r'
+_POOL_VM_SIZE = 'Standard_F2s_v2'
 _NODE_OS_PUBLISHER = 'OpenLogic'
-_NODE_OS_OFFER = 'CentOS-HPC'
-_NODE_OS_SKU = '7.4'
+
+# CentOS-HPC Should only be used on RDMA capable instance types (Hc or Hb)
+#_NODE_OS_OFFER = 'CentOS-HPC'
+#_NODE_OS_SKU = '7.4'
+
+_NODE_OS_OFFER = 'CentOS'
+_NODE_OS_SKU = '7.6'
+
 _JOB_ID = 'job-{}'.format(_POOL_ID)
 _TASK_ID = common.helpers.generate_unique_resource_name(
     'task_{}_{}'.format(_OS_NAME, _APP_NAME))
@@ -79,8 +85,10 @@ if __name__ == '__main__':
 
     blob_client = azureblob.BlockBlobService(
         account_name=_STORAGE_ACCOUNT_NAME, account_key=_STORAGE_ACCOUNT_KEY)
-    blob_client.retry = LinearRetry(
-        backoff=5, max_attempts=3, retry_to_secondary=False, random_jitter_range=3)
+    # Can't get retry to work
+    # TODO
+    #blob_client.retry = LinearRetry(
+    #    backoff=5, max_attempts=3, retry_to_secondary=False, random_jitter_range=3)
 
     # Use the blob client to create the containers in Azure Storage if they
     # don't yet exist.
@@ -107,7 +115,7 @@ if __name__ == '__main__':
     # used/processed by all subtasks (including primary) in a
     # multi-instance task.
     common_file_paths = [
-        os.path.realpath('./data/coordination-cmd')]
+        os.path.realpath('./data/tcp-pingpong-prep.sh')]
 
     # Upload the common script/data files to Azure Storage
     common_files = [
@@ -117,12 +125,15 @@ if __name__ == '__main__':
 
     # Command to run on all subtasks including primary before starting
     # application command on primary.
-    coordination_cmdline = ['$AZ_BATCH_TASK_SHARED_DIR/coordination-cmd']
+    coordination_cmdline = ['$AZ_BATCH_TASK_SHARED_DIR/tcp-pingpong-prep.sh']
 
     # The collection of scripts/data files that are to be used/processed by
     # the task (used/processed by primary in a multiinstance task).
     input_file_paths = [
-        os.path.realpath('./data/application-cmd')]
+        os.path.realpath('./data/tcp-pingpong-job.sh'),
+        os.path.realpath('./data/tcp-prep.sh'),
+        os.path.realpath('./data/pingpong.c'),
+        ]
 
     # Upload the script/data files to Azure Storage
     input_files = [
@@ -133,7 +144,7 @@ if __name__ == '__main__':
     # Main application command to execute multiinstance task on a group of
     # nodes, eg. MPI.
     application_cmdline = [
-        '$AZ_BATCH_TASK_WORKING_DIR/application-cmd {}'.format(_NUM_INSTANCES)]
+        '$AZ_BATCH_TASK_WORKING_DIR/tcp-pingpong-job.sh {}'.format(_NUM_INSTANCES)]
 
     # Create a Batch service client.  We'll now be interacting with the Batch
     # service in addition to Storage
@@ -158,7 +169,7 @@ if __name__ == '__main__':
     multi_task_helpers.add_task(
         batch_client, _JOB_ID, _TASK_ID, _NUM_INSTANCES,
         common.helpers.wrap_commands_in_shell(_OS_NAME, application_cmdline),
-        input_files, batchmodels.ElevationLevel.non_admin,
+        input_files, batchmodels.ElevationLevel.admin,
         _TASK_OUTPUT_FILE_PATH_ON_VM, output_container_sas,
         common.helpers.wrap_commands_in_shell(_OS_NAME, coordination_cmdline),
         common_files)
@@ -180,9 +191,10 @@ if __name__ == '__main__':
     logger.info("Sleeping 15 seconds...")
     time.sleep(15)
     
+    common.helpers.query_yes_no('Ready to proceed to deletion?')
 
     logger.info('Deleting input container...')
-    blob_client.delete_container(input_container_name)
+    #blob_client.delete_container(input_container_name)
 
     logger.info('Deleting job and pool...')
     batch_client.job.delete(_JOB_ID)
