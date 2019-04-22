@@ -29,9 +29,9 @@ export I_MPI_FABRICS=shm:dapl
 export I_MPI_DAPL_PROVIDER=ofa-v2-ib0
 export I_MPI_DYNAMIC_CONNECTION=0
 
-mpirun -n $1 -ppn `nproc` -hosts $AZ_BATCH_HOST_LIST IMB-MPI1 pingpong > pong1.log
+mpirun IMB-MPI1 pingpong > pong1.log
 echo "----"
-mpirun -n $1 -ppn `nproc` -hosts $AZ_BATCH_HOST_LIST ./pingpong > pong2.log
+mpirun ./pingpong > pong2.log
 
 echo All done!
 exit 0

@@ -140,6 +140,8 @@ if __name__ == '__main__':
         common.helpers.upload_file_to_container(
             blob_client, input_container_name, file_path, timeout=120)
         for file_path in input_file_paths]
+    print ("input files debug is\n")
+    print(input_files)
 
     # Main application command to execute multiinstance task on a group of
     # nodes, eg. MPI.
